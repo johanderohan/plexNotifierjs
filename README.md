@@ -1,6 +1,8 @@
 #PlexNotifier.js
 *PlexNotifier.js* is a *Node.js* based application to send **pushover** watching notifications and **mail** new updates in your plex server.
 
+![PlexNotifier.js](http://i.imgur.com/ZL4GsGG.png "PlexNotifier.js")
+
 ##Installation
 `npm install`
 
