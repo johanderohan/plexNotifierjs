@@ -1,0 +1,28 @@
+{
+  "name": "plex",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node app.js"
+  },
+  "preferGlobal": true,
+  "bin": {
+    "plex-njs": "app.js"
+  },
+  "engines": {
+    "node": ">= 0.10.x"
+  },
+  "dependencies": {
+    "body-parser": "x",
+    "cron": "x",
+    "ejs": "^1.0.0",
+    "express": "x",
+    "nedb": "^1.0.0",
+    "node-uuid": "^1.4.2",
+    "nodemailer": "^1.3.0",
+    "nodemailer-smtp-transport": "^0.1.13",
+    "pushover-notifications": "^0.2.2",
+    "request": "x",
+    "xml2js": "x"
+  }
+}
