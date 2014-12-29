@@ -146,7 +146,6 @@ function cronUpdates(){
     if(!LASTDATE) LASTDATE = Math.floor(Date.now() / 1000);
 
     CRONUPDATES = new CronJob('00 */30 * * * *', function(){
-    	console.log('updates');
         request(options, function (error, response, body) {        
             var json;
             xml2js(body, function (err, result) {
@@ -217,7 +216,6 @@ function cronSession(){
     }
 
     CRONSESSIONS = new CronJob('0 */5 * * * *', function(){
-    	console.log('sessions');
         request(options, function (error, response, body) {        
 
             var json;
