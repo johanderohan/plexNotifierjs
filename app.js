@@ -145,7 +145,8 @@ function cronUpdates(){
 
     if(!LASTDATE) LASTDATE = Math.floor(Date.now() / 1000);
 
-    CRONUPDATES = new CronJob('30 * * * * *', function(){
+    CRONUPDATES = new CronJob('00 */30 * * * *', function(){
+    	console.log('updates');
         request(options, function (error, response, body) {        
             var json;
             xml2js(body, function (err, result) {
@@ -161,7 +162,7 @@ function cronUpdates(){
             msg += 'SHOWS\n';
             msg += '----------------\n';
             for (var media in shows) {
-                if(shows[media].addedAt > LASTDATE){
+                if(shows[media].$.addedAt > LASTDATE){
                     send = true;
                     msg += shows[media].$.parentTitle;
                     msg += ' - '+shows[media].$.index;
@@ -177,7 +178,7 @@ function cronUpdates(){
             msg += 'MOVIES\n';
             msg += '----------------\n';
             for (var media in movies) {
-                if(movies[media].addedAt > LASTDATE){
+                if(movies[media].$.addedAt > LASTDATE){
                     send = true;
                     msg += movies[media].$.title+' ('+movies[media].$.year+')'+'\n';
                 }
@@ -215,7 +216,8 @@ function cronSession(){
         headers: headers
     }
 
-    CRONSESSIONS = new CronJob('5 * * * * *', function(){
+    CRONSESSIONS = new CronJob('0 */5 * * * *', function(){
+    	console.log('sessions');
         request(options, function (error, response, body) {        
 
             var json;
