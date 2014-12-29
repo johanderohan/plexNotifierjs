@@ -9,7 +9,7 @@ var bodyParser = require('body-parser')
 var express = require('express')
 var app = express()
 
-var crontab = require('node-crontab');
+var CronJob = require('cron').CronJob;
 var CRONSESSIONS, CRONUPDATES;
 var Datastore = require('nedb')
   , db = new Datastore({ filename: path.join(__dirname+'/data.db'), autoload: true });
@@ -145,8 +145,7 @@ function cronUpdates(){
 
     if(!LASTDATE) LASTDATE = Math.floor(Date.now() / 1000);
 
-    CRONUPDATES = crontab.scheduleJob("*/30 * * * *", function(){
-    	console.log('Checking updates...'+LASTDATE);
+    CRONUPDATES = new CronJob('30 * * * * *', function(){
         request(options, function (error, response, body) {        
             var json;
             xml2js(body, function (err, result) {
@@ -162,7 +161,7 @@ function cronUpdates(){
             msg += 'SHOWS\n';
             msg += '----------------\n';
             for (var media in shows) {
-                if(shows[media].$.addedAt > LASTDATE){
+                if(shows[media].addedAt > LASTDATE){
                     send = true;
                     msg += shows[media].$.parentTitle;
                     msg += ' - '+shows[media].$.index;
@@ -178,7 +177,7 @@ function cronUpdates(){
             msg += 'MOVIES\n';
             msg += '----------------\n';
             for (var media in movies) {
-                if(movies[media].$.addedAt > LASTDATE){
+                if(movies[media].addedAt > LASTDATE){
                     send = true;
                     msg += movies[media].$.title+' ('+movies[media].$.year+')'+'\n';
                 }
@@ -216,9 +215,9 @@ function cronSession(){
         headers: headers
     }
 
-    CRONSESSIONS = crontab.scheduleJob("5 * * * *", function(){
+    CRONSESSIONS = new CronJob('5 * * * * *', function(){
         request(options, function (error, response, body) {        
-        	console.log('Checking sessions...');
+
             var json;
             xml2js(body, function (err, result) {
                 json = result;
@@ -328,8 +327,8 @@ app.post('/logout', function(req, res){
 	db.remove({ value: 'plex_info' }, { multi: true });
 
 	PLEX_INFO = {};
-	crontab.cancelJob(CRONUPDATES);
-	crontab.cancelJob(CRONSESSIONS);
+	CRONUPDATES.stop();
+	CRONSESSIONS.stop();
 
     res.redirect('/');
 
@@ -339,7 +338,7 @@ app.post('/savepushover', function(req, res){
 
 	db.remove({ value: 'pushover_info' }, { multi: true });
 	PUSHOVER_INFO = {};
-	if(CRONSESSIONS) crontab.cancelJob(CRONSESSIONS);
+	if(CRONSESSIONS) CRONSESSIONS.stop();
 
 	if(req.body.pushover_user && req.body.pushover_token){
 
@@ -365,7 +364,7 @@ app.post('/savemail', function(req, res){
 
 	db.remove({ value: 'mail_info' }, { multi: true });
 	MAIL_INFO = {};
-	if(CRONUPDATES) crontab.cancelJob(CRONUPDATES);
+	if(CRONUPDATES) CRONUPDATES.stop();
 
 	if(req.body.mail_host && req.body.mail_port && req.body.mail_user && req.body.mail_pass && req.body.mail_mail && req.body.mail_recipients){
 
