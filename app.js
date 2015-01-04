@@ -17,6 +17,7 @@ var push = require( 'pushover-notifications' );
 var nodemailer = require('nodemailer');
 
 var PLEX_INFO = {};
+var SECTION_INFO = {};
 var PUSHOVER_INFO = {};
 var MAIL_INFO = {};
 
@@ -43,6 +44,54 @@ app.get('/', function (req, res) {
     }
 })
 
+function getLibraries(){
+	// Set the headers
+    var headers = {
+        'X-Plex-Platform': 'Node.js',
+        'X-Plex-Platform-Version': '0.10.33',
+        'X-Plex-Provides': 'controller',
+        'X-Plex-Client-Identifier': PLEX_INFO.uuid,
+        'X-Plex-Product': 'PlexNotifier.js',
+        'X-Plex-Version': '0.0.1',
+        'X-Plex-Device': 'Node Client',
+        'X-Plex-Token': PLEX_INFO.accessToken
+    }
+
+    // Configure the request
+    var options = {
+        url: PLEX_INFO.scheme+'://'+PLEX_INFO.localAddresses+':'+PLEX_INFO.port+'/library/sections',
+        method: 'GET',
+        headers: headers
+    }
+
+    request(options, function (error, response, body) {        
+
+        var json;
+        xml2js(body, function (err, result) {
+            json = result;
+        });
+
+        var section_info = {
+                		value: 'section_info',
+                		section: []
+                	}
+
+        for (var library in json.MediaContainer.Directory) {
+        	var section = {
+        		key: json.MediaContainer.Directory[library].$.key,
+        		type: json.MediaContainer.Directory[library].$.type,
+        		title: json.MediaContainer.Directory[library].$.title
+        	}
+        	section_info.section.push(section);
+        }
+
+        db.insert(section_info, function (err, newDoc) {   
+                    	SECTION_INFO = section_info;
+                    });
+
+    })
+}
+
 function loadTokens(){
     db.findOne({ value: 'plex_info' }, function (err, doc) {
         if(doc){
@@ -60,6 +109,13 @@ function loadTokens(){
             //cronUpdates();
         }
     });
+
+    db.findOne({ value: 'section_info' }, function (err, doc) {
+        if(doc){
+            SECTION_INFO = doc;
+        }
+    });
+
 
     db.findOne({ value: 'pushover_info' }, function (err, doc) {
         if(doc){
@@ -136,61 +192,80 @@ function cronUpdates(){
         'X-Plex-Token': PLEX_INFO.accessToken
     }
 
-    // Configure the request
-    var options = {
-        url: PLEX_INFO.scheme+'://'+PLEX_INFO.localAddresses+':'+PLEX_INFO.port+'/library/recentlyAdded',
-        method: 'GET',
-        headers: headers
-    }
-
     if(!LASTDATE) LASTDATE = Math.floor(Date.now() / 1000);
 
-    CRONUPDATES = new CronJob('00 */30 * * * *', function(){
-        request(options, function (error, response, body) {        
-            var json;
-            xml2js(body, function (err, result) {
-                json = result;
-            });
+    CRONUPDATES = new CronJob('* */5 * * * *', function(){
 
-            var shows = json.MediaContainer.Directory;
-            var movies = json.MediaContainer.Video;
+	    var the_sections = [];
+	    var msg ='';
+	    var send = false;
 
-            var msg ='';
-            var send = false;
+    	for (var section in SECTION_INFO.section) {
 
-            msg += 'SHOWS\n';
-            msg += '----------------\n';
-            for (var media in shows) {
-                if(shows[media].$.addedAt > LASTDATE){
-                    send = true;
-                    msg += shows[media].$.parentTitle;
-                    msg += ' - '+shows[media].$.index;
-                    if (shows[media].$.leafCount < 10 && shows[media].$.leafCount >= 0)
-                        msg += 'x0'+shows[media].$.leafCount;
-                    else 
-                        msg += 'x'+shows[media].$.leafCount;
-                    msg += '\n';
-                }
-            }
+    		var options_section = {
+		        url: PLEX_INFO.scheme+'://'+PLEX_INFO.localAddresses+':'+PLEX_INFO.port+'/library/sections/'+SECTION_INFO.section[section].key+'/recentlyAdded',
+		        method: 'GET',
+		        headers: headers
+		    }
 
-            msg += '\n';
-            msg += 'MOVIES\n';
-            msg += '----------------\n';
-            for (var media in movies) {
-                if(movies[media].$.addedAt > LASTDATE){
-                    send = true;
-                    msg += movies[media].$.title+' ('+movies[media].$.year+')'+'\n';
-                }
-            }
-            
-            if(send){
+		    var requets = request(options_section, function (error, response, body) { 
+		    	var json;
+	            xml2js(body, function (err, result) {
+	                json = result;
+	            });
+
+	            for (var s in SECTION_INFO.section) {
+
+			    	if(SECTION_INFO.section[s].type == "show" && SECTION_INFO.section[s].key == json.MediaContainer.$.librarySectionID){
+			    		var shows = json.MediaContainer.Video;
+
+			    		msg += 'SHOWS\n';
+			            msg += '----------------\n';
+			            for (var media in shows) {
+			                if(shows[media].$.addedAt > LASTDATE){
+			                    send = true;
+			                    msg += shows[media].$.grandparentTitle;
+			                    msg += ' - '+shows[media].$.parentIndex;
+			                    if (shows[media].$.index < 10 && shows[media].$.index >= 0)
+			                        msg += 'x0'+shows[media].$.index;
+			                    else 
+			                        msg += 'x'+shows[media].$.index;
+			                    msg += ' '+shows[media].$.title;
+			                    msg += '\n';
+			                }
+			            }
+
+			    	}
+			    	else if(SECTION_INFO.section[s].type == "movie" && SECTION_INFO.section[s].key == json.MediaContainer.$.librarySectionID) {
+			    		var movies = json.MediaContainer.Video;
+
+			    		msg += '\n';
+			            msg += 'MOVIES\n';
+			            msg += '----------------\n';
+			            for (var media in movies) {
+			                if(movies[media].$.addedAt > LASTDATE){
+			                    send = true;
+			                    msg += movies[media].$.title+' ('+movies[media].$.year+')'+'\n';
+			                }
+			            }
+			    	}
+			    }
+
+        	});
+
+    	}
+
+    	setTimeout(
+		  function() 
+		  {
+		    if(send){
                 send = false;
                 LASTDATE = Math.floor(Date.now() / 1000);
                 console.log(msg);
                 sendMail(msg);
             }
+		  }, 8000);
 
-        });
     }, null, true);
 }
 
@@ -310,7 +385,7 @@ app.post('/login', function(req, res){
 
                     db.insert(plex_info, function (err, newDoc) {   
                     	PLEX_INFO = plex_info;
-
+                    	getLibraries();
                         //cronSession();
                         //cronUpdates();
                     });
@@ -325,8 +400,10 @@ app.post('/login', function(req, res){
 app.post('/logout', function(req, res){
 
 	db.remove({ value: 'plex_info' }, { multi: true });
+	db.remove({ value: 'section_info' }, { multi: true });
 
 	PLEX_INFO = {};
+	SECTION_INFO = {};
 	CRONUPDATES.stop();
 	CRONSESSIONS.stop();
 
