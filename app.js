@@ -84,7 +84,7 @@ function getLibraries(){
         	}
         	section_info.section.push(section);
         }
-
+        db.remove({ value: 'section_info' }, { multi: true });
         db.insert(section_info, function (err, newDoc) {   
                     	SECTION_INFO = section_info;
                     });
@@ -104,7 +104,7 @@ function loadTokens(){
             PLEX_INFO.address = doc.address;
             PLEX_INFO.port = 32400;
             PLEX_INFO.uuid = doc.uuid;
-
+            getLibraries();
             //cronSession();
             //cronUpdates();
         }
@@ -194,7 +194,7 @@ function cronUpdates(){
 
     if(!LASTDATE) LASTDATE = Math.floor(Date.now() / 1000);
 
-    CRONUPDATES = new CronJob('* */5 * * * *', function(){
+    CRONUPDATES = new CronJob('00 30 8 * * *', function(){
 
 	    var the_sections = [];
 	    var msg ='';
@@ -234,6 +234,7 @@ function cronUpdates(){
 			                    msg += '\n';
 			                }
 			            }
+			            msg += '\n';
 
 			    	}
 			    	else if(SECTION_INFO.section[s].type == "movie" && SECTION_INFO.section[s].key == json.MediaContainer.$.librarySectionID) {
@@ -248,6 +249,7 @@ function cronUpdates(){
 			                    msg += movies[media].$.title+' ('+movies[media].$.year+')'+'\n';
 			                }
 			            }
+			            msg += '\n';
 			    	}
 			    }
 
@@ -385,7 +387,8 @@ app.post('/login', function(req, res){
 
                     db.insert(plex_info, function (err, newDoc) {   
                     	PLEX_INFO = plex_info;
-                    	getLibraries();
+                    	loadTokens();
+                    	//getLibraries();
                         //cronSession();
                         //cronUpdates();
                     });
