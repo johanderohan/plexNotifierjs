@@ -100,7 +100,7 @@ function loadTokens(){
             PLEX_INFO.name = doc.name;
             PLEX_INFO.uuid = doc.uuid;
             PLEX_INFO.scheme = doc.scheme;
-            PLEX_INFO.localAddresses = doc.localAddresses;
+            PLEX_INFO.localAddresses = doc.localAddresses[0];
             PLEX_INFO.address = doc.address;
             PLEX_INFO.port = 32400;
             PLEX_INFO.uuid = doc.uuid;
@@ -372,8 +372,7 @@ app.post('/login', function(req, res){
 
         for (var servers in json) {
             for (var server in json[servers].Server) {
-                if (json[servers].Server[server].$.name != "Cloud Sync")
-
+                if (json[servers].Server[server].$.name != "Cloud Sync" && json[servers].Server[server].$.owned != 0){
                 	var plex_info = {
                 		value: 'plex_info',
                 		accessToken: json[servers].Server[server].$.accessToken,
@@ -381,7 +380,7 @@ app.post('/login', function(req, res){
                 		scheme: json[servers].Server[server].$.scheme,
                 		address: json[servers].Server[server].$.address,
                 		port: 32400,
-                		localAddresses: json[servers].Server[server].$.localAddresses,
+                		localAddresses: json[servers].Server[server].$.localAddresses.split(','),
                 		uuid: theuuid
                 	}
 
@@ -392,6 +391,7 @@ app.post('/login', function(req, res){
                         //cronSession();
                         //cronUpdates();
                     });
+                }
             }
         }
 
@@ -407,8 +407,8 @@ app.post('/logout', function(req, res){
 
 	PLEX_INFO = {};
 	SECTION_INFO = {};
-	CRONUPDATES.stop();
-	CRONSESSIONS.stop();
+	if (CRONUPDATES) CRONUPDATES.stop();
+	if (CRONUPDATES) CRONSESSIONS.stop();
 
     res.redirect('/');
 
